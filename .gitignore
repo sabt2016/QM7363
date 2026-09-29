@@ -1,0 +1,29 @@
+# local config and secrets
+config.py
+.env
+*.key
+
+# data lives in the shared OneDrive folder, not in git
+data/
+*.xlsx
+*.csv
+!tests/fixtures/*.csv
+
+# generated output
+outputs/
+*.pkl
+*.parquet
+
+# python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
