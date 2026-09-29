@@ -1,0 +1,23 @@
+# What we need. Install from this ONCE, then `pip freeze > requirements.txt`
+# and commit that file. Everyone else installs from requirements.txt.
+
+# data and modelling
+pandas
+numpy
+scikit-learn
+openpyxl          # reads final_panel.xlsx
+pyarrow           # fast parquet cache of the panel
+
+# interface
+streamlit
+
+# filings retrieval (phase 2, behind the coverage gate)
+requests
+
+# agent -- add the SDK for whichever model we pick in task 0.5
+# anthropic
+# openai
+
+# development
+pytest
+python-dotenv     # loads API keys from .env, never from code
