@@ -1,7 +1,7 @@
 # Tool Contract
 
-**Status:** proposal for team review. Amend freely, then sign at the bottom.
-**Task:** 0.1. Nothing downstream can be built until this is settled.
+**Status:** AGREED AND IN FORCE. Signed by all five members on October 6, 2026.
+**Task:** 0.1, complete. Stubs and implementation may now begin.
 
 Nine functions. Said Shoaib implements them, Enock's agent calls them, and the
 verifier in task 5.3 matches every claim in a generated brief back to one of
@@ -259,8 +259,17 @@ row in the decision log.
 
 | Name | Role | Date | Agreed |
 |---|---|---|---|
-| Mark | Team lead | | |
-| Jessica | Data and model | | |
-| Said Shoaib | Tool layer | | |
-| Enock | Agent | | |
-| Mouzam Younas | Application and evaluation | | |
+| Mark | Team lead | 2026-10-06 | Yes |
+| Jessica Bedson | Data and model | 2026-10-06 | Yes |
+| Said Shoaib | Tool layer | 2026-10-06 | Yes |
+| Enock | Agent | 2026-10-06 | Yes |
+| Mouzam Younas | Application and evaluation | 2026-10-06 | Yes |
+
+All five agreed as recorded in the project Teams thread on October 6, 2026. No
+amendments were raised during review. This contract is now the specification
+Said Shoaib builds to and Enock calls against.
+
+**Amending after this point.** Post the proposed change in Teams, get agreement
+from the owner of every affected tool, update this file, and add a row to
+`docs/DECISION_LOG.md`. Do not change a return shape in code and reconcile the
+document later.
