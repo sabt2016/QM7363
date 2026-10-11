@@ -88,14 +88,48 @@ every clone slow and every change store a whole new copy.
 
 Shared folder contents:
 
-| File | What it is |
+| Path | What it is |
 |---|---|
 | `final_panel.xlsx` | Mouzam's firm-year panel. 83,726 rows, 12,275 firms, FY2011 to FY2022 |
 | `build_panel.py` | Mouzam's script that rebuilds the panel from the raw Compustat extracts |
 | `raw/` | The five raw Compustat and WRDS extracts |
+| `models/` | Trained model artifacts. See below. |
+| `results/` | Metric tables and evaluation output |
 
 Download the folder once, put it anywhere on your machine, and point `DATA_DIR`
 at it.
+
+### Where trained models live
+
+Models are **not** in git. `.gitignore` blocks `*.pkl` and `*.csv` on purpose, so
+do not add an exception. A model file is binary and gets retrained repeatedly,
+and git keeps a whole new copy every time.
+
+Trained artifacts go in the shared OneDrive folder under `models/`, alongside the
+panel they were trained on:
+
+```
+models/
+  financial_only_rf_v1.pkl               fitted pipeline, classifier, calibrator
+  financial_only_rf_v1_model_card.md     methods, results, known limits
+  financial_only_rf_v1_decisions.json    timing, feature and split decisions
+results/
+  financial_only_v1_validation.csv
+  financial_only_v1_test.csv
+```
+
+**Version in the filename, and never overwrite.** Retraining produces `_v2`, not a
+replacement `_v1`. `score_firm` loads an explicit version, so a retrain can never
+silently change what the agent is scoring with. When a new version becomes the
+default, say so in `docs/DECISION_LOG.md` and change the version `score_firm`
+points at in the same commit.
+
+Point `config.py` at the folder and load by name:
+
+```python
+MODEL_DIR = DATA_DIR / "models"
+MODEL_VERSION = "financial_only_rf_v1"
+```
 
 ### One rule about the label
 
