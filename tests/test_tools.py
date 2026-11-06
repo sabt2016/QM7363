@@ -33,7 +33,7 @@ def test_get_firm_history():
 
 
 def test_get_control_history():
-    result = get_control_history("001004")
+    result = get_control_history("001004", 2018)
 
     assert_tool_envelope(result)
 

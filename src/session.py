@@ -90,7 +90,7 @@ class OfflineLLM:
         self.fyear = int(fyear)
         self.inject_unsupported = inject_unsupported
         self.plan: list[tuple[str, dict[str, Any]]] = [
-            ("get_control_history", {"gvkey": ALIAS}),
+            ("get_control_history", {"gvkey": ALIAS, "through_fyear": self.fyear}),
             ("score_firm", {"gvkey": ALIAS, "fyear": self.fyear}),
             ("get_percentile", {"gvkey": ALIAS, "fyear": self.fyear, "variable": "ROA"}),
             ("get_peer_cohort", {"gvkey": ALIAS, "fyear": self.fyear}),

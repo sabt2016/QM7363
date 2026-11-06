@@ -62,14 +62,15 @@ edgar | cik=0001750 | 10-K FY2018 | Item 9A | para 3
 
 ## 3. The nine tools
 
-### 1. `get_firm_history(gvkey, through_fyear=None)`
+### 1. `get_firm_history(gvkey, through_fyear)`
 
 Everything on record for one firm. The agent's usual first call.
 
 **value:** list of dicts, one per fiscal year, oldest first. Each dict holds
 `fyear`, `auopic`, `auop`, `SIC`, and all 19 features.
-`through_fyear` caps the list so the agent cannot see past the year under review.
-Omit it only for a retrospective question.
+`through_fyear` is REQUIRED and caps the list at that year inclusive, so the
+agent cannot see past the year under review. It used to default to None, which
+is the same hole section 1 closes for tools 2, 6 and 7. Amended 2026-11-06.
 
 **source:** `final_panel | gvkey=001004 | fyear<=2018 | 8 rows`
 

@@ -87,167 +87,95 @@ Use null when a value is not available.
 
 # Interface-level tool schemas. Confirm parameter names against src/tools.py
 # before connecting the real tools.
+def _schema(
+    name: str,
+    description: str,
+    properties: dict[str, Any],
+    required: list[str],
+) -> dict[str, Any]:
+    """One tool schema in the shape both providers expect."""
+    return {
+        "type": "function",
+        "function": {
+            "name": name,
+            "description": description,
+            "parameters": {
+                "type": "object",
+                "properties": properties,
+                "required": required,
+                "additionalProperties": False,
+            },
+        },
+    }
+
+
 TOOL_SCHEMAS: list[dict[str, Any]] = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_firm_history",
-            "description": "Retrieve a firm's historical financial ratios and control opinions.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "through_fyear": {"type": "integer"},
-                },
-                "required": ["gvkey", "through_fyear"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_control_history",
-            "description": "Retrieve years with adverse internal-control opinions for a firm.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "through_fyear": {"type": "integer"},
-                },
-                "required": ["gvkey", "through_fyear"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "score_firm",
-            "description": "Return the frozen model's probability of an adverse opinion in year t+1.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "feature_year": {"type": "integer"},
-                },
-                "required": ["gvkey", "feature_year"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_percentile",
-            "description": "Locate a firm's ratio within the distribution for its fiscal year.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "feature_year": {"type": "integer"},
-                    "variable": {"type": "string"},
-                },
-                "required": ["gvkey", "feature_year", "variable"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_deviation",
-            "description": "Compare a firm's ratio with its own historical median.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "feature_year": {"type": "integer"},
-                    "variable": {"type": "string"},
-                },
-                "required": ["gvkey", "feature_year", "variable"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_peer_cohort",
-            "description": "Retrieve nearest firms in standardized financial space and their outcomes.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "feature_year": {"type": "integer"},
-                    "k": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "maximum": 100,
-                    },
-                },
-                "required": ["gvkey", "feature_year", "k"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_cohort_rate",
-            "description": "Retrieve the adverse-opinion rate for a named cohort slice.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "cohort_key": {"type": "string"},
-                    "cohort_value": {"type": "string"},
-                    "feature_year": {"type": "integer"},
-                },
-                "required": [
-                    "cohort_key",
-                    "cohort_value",
-                    "feature_year",
-                ],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_industry_context",
-            "description": "Retrieve adverse rate and typical ratios for an SIC industry group.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "sic": {"type": "integer"},
-                    "feature_year": {"type": "integer"},
-                },
-                "required": ["sic", "feature_year"],
-                "additionalProperties": False,
-            },
-        },
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_filing_excerpt",
-            "description": "Retrieve a cited passage from an available SEC filing.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "gvkey": {"type": "string"},
-                    "fyear": {"type": "integer"},
-                    "section": {
-                        "type": "string",
-                        "enum": ["Item 7", "Item 9A", "Item 15"],
-                    },
-                },
-                "required": ["gvkey", "fyear", "section"],
-                "additionalProperties": False,
-            },
-        },
-    },
+    # Parameter names here MUST match the signatures in src/tools.py, which
+    # follow docs/TOOL_CONTRACT.md. tests/test_schema_contract.py enforces it.
+    # Seven of these drifted once and would have raised TypeError against any
+    # model that followed them; only a scripted stand-in hid it.
+    _schema(
+        "get_firm_history",
+        "Retrieve a firm's historical financial ratios and control opinions.",
+        {"gvkey": {"type": "string"}, "through_fyear": {"type": "integer"}},
+        ["gvkey", "through_fyear"],
+    ),
+    _schema(
+        "get_control_history",
+        "Retrieve a firm's internal-control opinions up to and including through_fyear.",
+        {"gvkey": {"type": "string"}, "through_fyear": {"type": "integer"}},
+        ["gvkey", "through_fyear"],
+    ),
+    _schema(
+        "score_firm",
+        "Return the frozen model's probability of an adverse opinion in year t+1.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"}},
+        ["gvkey", "fyear"],
+    ),
+    _schema(
+        "get_percentile",
+        "Locate a firm's ratio within the distribution for its fiscal year.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"},
+         "variable": {"type": "string"}},
+        ["gvkey", "fyear", "variable"],
+    ),
+    _schema(
+        "get_deviation",
+        "Compare a firm's ratio with its own historical median.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"},
+         "variable": {"type": "string"}},
+        ["gvkey", "fyear", "variable"],
+    ),
+    _schema(
+        "get_peer_cohort",
+        "Retrieve nearest firms in standardized financial space and their outcomes in fyear.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"},
+         "k": {"type": "integer", "minimum": 1, "maximum": 500,
+               "description": "Number of peers. Defaults to 200 if omitted."}},
+        ["gvkey", "fyear"],
+    ),
+    _schema(
+        "get_cohort_rate",
+        "Retrieve the adverse-opinion rate for a named cohort slice, pooling fyear and earlier.",
+        {"slice_name": {"type": "string",
+                        "description": "One of size_decile_1 to size_decile_10, "
+                                       "sic2_<nn>, auop_1, auop_4, fin, nonfin, all."},
+         "fyear": {"type": "integer"}},
+        ["slice_name", "fyear"],
+    ),
+    _schema(
+        "get_industry_context",
+        "Retrieve adverse rate and typical ratios for the firm's SIC industry group.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"}},
+        ["gvkey", "fyear"],
+    ),
+    _schema(
+        "get_filing_excerpt",
+        "Retrieve a cited passage from an available SEC filing.",
+        {"gvkey": {"type": "string"}, "fyear": {"type": "integer"},
+         "section": {"type": "string"}},
+        ["gvkey", "fyear", "section"],
+    ),
 ]
 
 

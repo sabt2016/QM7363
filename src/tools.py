@@ -16,8 +16,13 @@ def _result(value, source="stub", notes="Stub implementation"):
     }
 
 
-def get_firm_history(gvkey, through_fyear=None):
-    """Return a firm's historical firm-year records."""
+def get_firm_history(gvkey, through_fyear):
+    """Return a firm's historical firm-year records, capped at through_fyear.
+
+    through_fyear is required. Contract amendment 2026-11-06: it used to
+    default to None, which returned the full record including years after
+    the one under assessment.
+    """
     return _result(
         [
             {
@@ -51,8 +56,12 @@ def get_firm_history(gvkey, through_fyear=None):
     )
 
 
-def get_control_history(gvkey):
-    """Return the firm's internal-control history."""
+def get_control_history(gvkey, through_fyear):
+    """Return the firm's internal-control history, capped at through_fyear.
+
+    through_fyear is required. Contract amendment 2026-11-06: without it this
+    tool returns the opinion in the outcome year, which is the label.
+    """
     return _result(
         {
             "adverse_years": [],
@@ -61,10 +70,11 @@ def get_control_history(gvkey):
             "current_status": "effective",
             "prior_year_status": "unknown",
         },
-        source="stub | final_panel",
+        source=f"stub | final_panel | gvkey={gvkey} | fyear<={through_fyear}",
         notes=(
             "Stub implementation. not_assessed_years would represent years "
-            "with no auditor attestation, not clean controls."
+            "with no auditor attestation, not clean controls. Record capped "
+            "at the requested year."
         ),
     )
 
@@ -125,7 +135,7 @@ def get_peer_cohort(gvkey, fyear, k=200):
                 "IntanTA",
                 "TobinQ",
             ],
-            "peer_adverse_rate": 0.1150,
+            "peer_adverse_rate": 0.1150,  # share adverse IN fyear, not fyear+1
             "cohort_base_rate": 0.0429,
             "lift": 2.68,
             "peers_resolved": k,
@@ -138,8 +148,12 @@ def get_peer_cohort(gvkey, fyear, k=200):
     )
 
 
-def get_cohort_rate(slice_name, fyear=None):
-    """Return the observed adverse rate for a named cohort."""
+def get_cohort_rate(slice_name, fyear):
+    """Return the observed adverse rate for a named cohort, fyear and earlier.
+
+    fyear is required. Contract amendment 2026-11-06: it was optional, and
+    omitting it pooled every year in the panel including the outcome year.
+    """
     return _result(
         {
             "slice": slice_name,
@@ -148,7 +162,7 @@ def get_cohort_rate(slice_name, fyear=None):
             "fyear": fyear,
         },
         source="stub | final_panel",
-        notes="Stub implementation; invented cohort rate.",
+        notes="Stub implementation; invented cohort rate. Pools the requested year and earlier.",
     )
 
 

@@ -36,7 +36,9 @@ class FakeLLM:
             return {
                 "type": "tool_call",
                 "name": "get_control_history",
-                "arguments": {"gvkey": "FIRM_A"},
+                # through_fyear is required since the look-ahead amendment of
+                # 2026-11-06. Omitting it used to return the outcome year.
+                "arguments": {"gvkey": "FIRM_A", "through_fyear": 2018},
             }
 
         if self.step == 2:
