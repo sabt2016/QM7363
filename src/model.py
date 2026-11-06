@@ -66,10 +66,15 @@ def _gvkey6(value):
     return f"{int(text):06d}"
 
 
-def _cohort_base_rate(panel, outcome_year):
-    """Observed adverse rate among assessed firms in the outcome year."""
+def _cohort_base_rate(panel, as_of_year):
+    """Observed adverse rate among assessed firms in the assessment year.
+
+    This reads year t, not t + 1. The outcome year's rate is not observable
+    when the assessment is made, and using it is a look-ahead violation under
+    docs/EVALUATION_DESIGN.md section 6. Decision 2026-11-06.
+    """
     cohort = panel.loc[
-        panel["fyear"].eq(outcome_year) & panel["auopic"].isin([EFFECTIVE, ADVERSE])
+        panel["fyear"].eq(as_of_year) & panel["auopic"].isin([EFFECTIVE, ADVERSE])
     ]
     if cohort.empty:
         return None
@@ -126,7 +131,7 @@ def score_firm(gvkey, fyear):
         f"{disclosure} Rank {rank} of {size} assessed firms in FY{year}, "
         f"highest risk first; percentile is derived from that rank. "
         f"cohort_base_rate is the observed adverse rate among assessed firms "
-        f"in FY{year + 1}."
+        f"in FY{year}, the last year observable at assessment time."
     )
     imputed = result.get("missing_features_imputed") or []
     if imputed:
@@ -136,7 +141,7 @@ def score_firm(gvkey, fyear):
         {
             "probability": round(float(result["probability"]), 4),
             "percentile": percentile,
-            "cohort_base_rate": _cohort_base_rate(panel, year + 1),
+            "cohort_base_rate": _cohort_base_rate(panel, year),
             "model_version": artifact["model_version"],
             "uses_prior_opinion": uses_prior,
         },

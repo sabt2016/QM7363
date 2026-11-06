@@ -275,9 +275,16 @@ class AgentResult:
 
 
 def _jsonable(value: Any) -> Any:
+    """Return a JSON-safe SNAPSHOT of value.
+
+    The round trip is load-bearing. Returning the original object made the
+    trace alias the live output, so verify_evidence_links, which removes
+    items in place, silently rewrote the trace as well and destroyed the
+    pre-verification output. Raw claim support then reads 100% by
+    construction. See docs/EVALUATION_DESIGN.md section 6, item 2.
+    """
     try:
-        json.dumps(value)
-        return value
+        return json.loads(json.dumps(value))
     except (TypeError, ValueError):
         return str(value)
 

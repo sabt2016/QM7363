@@ -1,6 +1,7 @@
 # Tool Contract
 
 **Status:** AGREED AND IN FORCE. Signed by all five members on October 6, 2026.
+**Amended 2026-11-06** (look-ahead): tools 2, 6 and 7 are capped at the assessment year. See section 1 and the decision log.
 **Task:** 0.1, complete. Stubs and implementation may now begin.
 
 Nine functions. Said Shoaib implements them, Enock's agent calls them, and the
@@ -36,6 +37,11 @@ Rules that hold for all nine:
   never `1004`.
 - **Unknown `gvkey`** returns `value: None` with `notes: "gvkey not in panel"`.
   It is not an error and must not raise.
+- **No tool may return anything observed after the assessment year.** The agent
+  assesses year `t` and the label is the opinion in `t + 1`, so any value from
+  `t + 1` onward is the answer or a proxy for it. Every tool that touches a year
+  is capped at `t` inclusive. Amended 2026-11-06, after task 4.2 found that
+  tools 2, 6 and 7 had no cap.
 
 ---
 
@@ -71,7 +77,7 @@ Omit it only for a retrospective question.
 
 ---
 
-### 2. `get_control_history(gvkey)`
+### 2. `get_control_history(gvkey, through_fyear)`
 
 The firm's internal control record. Separate from tool 1 because the three
 auopic codes mean different things and the agent must not conflate them.
@@ -87,9 +93,14 @@ auopic codes mean different things and the agent must not conflate them.
 }
 ```
 
+`through_fyear` is REQUIRED and caps every list at that year inclusive.
+`current_status` is the status in `through_fyear` and `prior_year_status` is the
+year before it. Without the cap this tool returns the opinion in `t + 1`, which
+is the label, and any assessment built on it is void.
+
 **notes:** must state plainly that `not_assessed_years` are years with no auditor
 attestation, not years with clean controls. The agent will say the wrong thing
-otherwise.
+otherwise. Must also state the year the record was capped at.
 
 ---
 
@@ -161,7 +172,7 @@ The k nearest firms in standardised feature space, and what happened to them.
 {
   "k":                200,
   "matched_on":       ["LNTA", "ROA", "CapInt", "GPM", "AT_TURN", "CURR_RATIO", "IntanTA", "TobinQ"],
-  "peer_adverse_rate": 0.1150,   # share adverse the following year
+  "peer_adverse_rate": 0.1150,   # share of peers adverse IN fyear, not fyear+1
   "cohort_base_rate":  0.0429,
   "lift":              2.68,
   "peers_resolved":    200
@@ -188,7 +199,9 @@ Valid `slice_name` values, fixed so the agent cannot invent one:
 {"slice": "size_decile_2", "adverse_rate": 0.0399, "n": 4273, "fyear": 2018}
 ```
 
-`fyear=None` pools all years and `notes` says so.
+`fyear` is REQUIRED. It was optional, and `fyear=None` pooled every year in the
+panel including years after the assessment. To pool, pass the assessment year
+and the tool pools `fyear` and earlier, saying so in `notes`.
 
 ---
 
