@@ -1,0 +1,69 @@
+{
+  "split": {
+    "design": "Feature year t predicts outcome year t+1 (auopic = 2)",
+    "source": "Enoch Banda, Task 1.4, reviewed",
+    "timing_rule": "Earlier partition outcome INFO_DATE must precede the next partition's earliest prediction date",
+    "info_date_limitation": "INFO_DATE is an availability proxy, not a verified auditor report date",
+    "partitions": [
+      {
+        "partition": "Training",
+        "rows": 14092,
+        "firms": 4136,
+        "feature_years": "2011-2014",
+        "outcome_years": "2012-2015",
+        "prediction_dates": "2011-09-30 to 2015-08-31",
+        "adverse": 522,
+        "adverse_rate": 0.037042293499858076
+      },
+      {
+        "partition": "Validation",
+        "rows": 3253,
+        "firms": 3253,
+        "feature_years": "2016-2016",
+        "outcome_years": "2017-2017",
+        "prediction_dates": "2016-09-30 to 2017-08-31",
+        "adverse": 116,
+        "adverse_rate": 0.035659391331079
+      },
+      {
+        "partition": "Test",
+        "rows": 12325,
+        "firms": 3785,
+        "feature_years": "2018-2021",
+        "outcome_years": "2019-2022",
+        "prediction_dates": "2018-09-30 to 2022-08-31",
+        "adverse": 471,
+        "adverse_rate": 0.03821501014198783
+      }
+    ]
+  },
+  "selection": {
+    "rule": "Highest validation ROC-AUC among financial-only logistic regression, Random Forest, XGBoost",
+    "validation_roc_auc": {
+      "Logistic regression": 0.6433144999065656,
+      "Random Forest": 0.7145032042474141,
+      "XGBoost": 0.7161877699976916
+    },
+    "primary": "XGBoost",
+    "runner_up": "Random Forest",
+    "primary_minus_runner_up": {
+      "ROC_gap": 0.0016845657502775335,
+      "ROC_lo": -0.026910402420350678,
+      "ROC_hi": 0.030259610251880023,
+      "PR_gap": -0.0031884191558857744,
+      "PR_lo": -0.0153951270756529,
+      "PR_hi": 0.009356449934009182
+    },
+    "variant": "XGBoost + prior opinion"
+  },
+  "primary_version": "financial_only_xgb_v3",
+  "variant_version": "prior_opinion_xgb_v3",
+  "random_seed": 20260928,
+  "seed_source": "decision-log value (config.SEED not importable from this folder)",
+  "benchmark_financial_only_roc_auc": [
+    0.7,
+    0.75
+  ],
+  "frozen_at_utc": "2026-11-09T19:40:20.821644+00:00",
+  "source_sha256": "482b5947612a99a6e3d9c0e5d09f781442967bf2d1f209db8ff48add16aac788"
+}
