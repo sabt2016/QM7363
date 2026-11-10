@@ -118,13 +118,18 @@ def test_trace_names_each_call_by_result_id(clean_run):
             assert any(rid in label for label in labels), rid
 
 
-def test_no_tool_called_with_a_later_year(clean_run):
-    # Section 9: the app never calls a tool with a year after the selected year.
-    for event in tool_calls(clean_run):
-        args = event.get("arguments") or {}
-        for key in YEAR_ARGS:
-            if args.get(key) is not None:
-                assert int(args[key]) <= FYEAR, (event.get("tool"), key, args[key])
+def test_demo_run_uses_only_the_selected_year(clean_run):
+    # Section 9 through the interface. The scripted demo model never asks for
+    # a later year, so on its own this cannot fail for the right reason. It
+    # checks the run is not empty and every year argument is the selected one.
+    # The enforcement test, with a model that does ask for t+1, is in
+    # tests/test_session_year_guard.py.
+    calls = tool_calls(clean_run)
+    assert calls, "no tool calls recorded"
+    years = [int(e["arguments"][k]) for e in calls for k in YEAR_ARGS
+             if (e.get("arguments") or {}).get(k) is not None]
+    assert years, "no tool call carried a year"
+    assert all(y <= FYEAR for y in years), years
 
 
 def test_real_gvkey_never_reaches_the_model(clean_run):
