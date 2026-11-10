@@ -1,7 +1,7 @@
 # Evaluation Design (task 4.2)
 
 Owner: Mouzam (Application and Evaluation). Reviewer: Mark.
-Status: DRAFT v0.4, 4 Nov 2026 (v0.3 fixed the look-ahead and replay definitions; v0.4 aligns section 6 and 8 with docs/VERIFIER_SPEC.md). Items marked **[CONFIRM]** need an answer from the named owner before this is frozen.
+Status: v0.5, 10 Nov 2026. v0.4 was agreed on 6 Nov (decision log). v0.5 records what changed since: the no-later-data contract rule, the raw-output fix, model v3, and the 10 Nov verifier amendments. Items marked **[CONFIRM]** still need an answer from the named owner.
 
 ## 1. Purpose and ground rules
 
@@ -26,7 +26,8 @@ This document fixes how we will judge the system **before** anyone sees test res
 
 - One case = firm i in fiscal year t. Inputs: financials known at year t. Label: ICFR opinion in year t+1 (adverse = 1, effective = 0), matched on INFO_DATE (decision log, 6 Oct).
 - Sample: 36,246 firm-year pairs, 1,433 adverse (3.95%). `auopic` code 0 (never assessed) is excluded, because it is unknown, not clean.
-- Split: Enock's temporal split (task 1.4, revised 9 Oct). Train, validation and test follow time order. **[CONFIRM: Enock, exact years for each partition and whether the relaxed variant is used.]**
+- Split: Enock's temporal split (task 1.4, revised 9 Oct). Train, validation and test follow time order. Test years are 2019 to 2022 (model card, v3). **[CONFIRM: Enock, train and validation years, and whether the relaxed variant is the primary split.]**
+- Model: `financial_only_xgb_v3`, retrained under `config.SEED`, loaded by `score_firm` through `src/model.py` (decision log, 10 Nov). `prior_opinion_xgb_v3` is the reference configuration.
 
 ## 4. Alert budget
 
@@ -60,23 +61,23 @@ Rules:
 
 ## 6. Part B: agent metrics
 
-Every agent run writes a trace log (Jessica's trace logger): the prompt, each tool call with arguments and returned `{value, source, notes}`, and the final assessment. **[CONFIRM: Jessica, trace file format and fields.]**
+Every agent run writes a trace with Jessica's trace logger (task 3.3) to `traces/<run_id>.jsonl`: each tool call with its arguments and returned `{value, source, notes}`, the raw output written **before** the verifier runs, and the verified output after it.
 
 The final assessment follows the output contract from task 3.2, with five sections: Assessment, Evidence, Contradictory evidence, Uncertainty, Recommended checks. Each item in Evidence and Contradictory evidence carries a `tool_result_ids` list.
 
-**Relation to the verifier (docs/VERIFIER_SPEC.md, task 5.3).** The verifier decides, during a run, which items a reader may see: `verify(output, trace)` removes unsupported items in place and returns a report with fixed reason codes (`missing_or_unknown_ids`, `numeric_claim_unsupported`, `direction_contradicts_result`, `entity_not_in_results`). The evaluation does not write a second checker. It calls the same `verify()` and reports what it finds.
+**Relation to the verifier (docs/VERIFIER_SPEC.md, task 5.3).** The verifier decides, during a run, which items a reader may see: `verify(output, trace)` removes unsupported items in place and returns a report with fixed reason codes (`missing_or_unknown_ids`, `numeric_claim_unsupported`, `direction_contradicts_result`, `entity_not_in_results`). The evaluation does not write a second checker. It calls the same `verify()` and reports what it finds. Since 10 Nov there is one verification pass in the production path, so a blocked claim is counted once. The verifier checks the interpretation text as well as the claim, and a year named in a claim must be a year a cited tool returned or was called with (decision log, 10 Nov).
 
-One consequence matters for every agent metric: after `verify()` runs, every remaining item passes by construction, so measuring support on the final output would always give 100%. The evaluation therefore measures the agent's **raw output, before verification**. This requires the trace to store the raw output as well as the verified one. **[CONFIRM: Enock and Jessica, raw output saved in the trace.]**
+One consequence matters for every agent metric: after `verify()` runs, every remaining item passes by construction, so measuring support on the final output would always give 100%. The evaluation therefore measures the agent's **raw output, before verification**, which the trace preserves since the `_jsonable` fix (decision log, 6 Nov).
 
 | Metric | Definition | Target |
 |---|---|---|
 | Raw claim support | Share of Evidence and Contradictory evidence items in the raw output that pass all `verify()` checks. Equals 1 minus the block rate | Report; the main agent quality number |
 | Block rate by reason | `blocked / (verified + blocked)` to 4 decimals, as `verify()` defines it, pooled and broken out by the four reason codes | Report |
 | Post-verification support | After `verify()`, share of remaining items that pass. Checked by a test, as a guard that the verifier ran | 100% |
-| Look-ahead violations | Count of runs that (a) request any year after t, (b) call `get_firm_history` without `through_fyear`, or (c) cite any value for a year after t. Part (c) matters because some tools have no year cap in the contract: `get_control_history` returns every year on record, and `get_cohort_rate` pools all years when `fyear` is omitted | 0 |
+| Look-ahead violations | Count of runs that (a) request any year after t, or (b) cite any value or name any outcome from a year after t. Since 6 Nov the contract forbids any tool from returning data observed after year t, and the year is required on every year-capped tool, including `get_firm_history`. Part (b) is therefore a check that those rules hold in practice: in tool returns, in filing excerpts, and in what the model brings from its own training | 0 |
 | Missing-data honesty | When a tool returns `value = None`, the assessment says the item is unavailable instead of stating a number (a number there would be blocked as `numeric_claim_unsupported`) | 100% |
 | Contradictory evidence used | Share of runs where the Contradictory evidence section cites at least one traceable tool result, or states that none was found | Report |
-| Score consistency | The agent's stated risk level agrees with the `score_firm` percentile band (low below 50th, medium 50th to 95th, high above 95th) | Report |
+| Score consistency | The agent's stated risk level agrees with the `score_firm` percentile band (low below 50th, moderate 50th to 95th, high above 95th). `indeterminate` is counted separately | Report |
 | Budget exhaustion rate | Share of runs that hit the limit of 8 executed tool calls (task 3.1 default) before finishing | Report |
 | Replay match | Re-execute the tool calls recorded in a trace: every tool returns exactly the recorded `{value, source, notes}` (task 6.5) | 100% |
 | Rerun agreement | Run the same case again with the same LLM: share of runs with the same tool calls and the same risk category. LLM output is not guaranteed to repeat, even at temperature 0, so this is reported, not targeted | Report |
@@ -132,13 +133,13 @@ Not scored with metrics. Covered by `tests/test_app.py`:
 
 ## 11. Open items
 
-| # | Question | Owner |
-|---|---|---|
-| 1 | Exact train, validation and test years; relaxed split or not | Enock |
-| 2 | Save the agent's raw output (before `verify()`) in the trace, so raw claim support can be measured. (Settled: numbers stay in claim text and the verifier extracts them, VERIFIER_SPEC 3.1; call budget 8) | Enock, Jessica |
-| 3 | Trace log format | Jessica |
-| 4 | Is 5% the right alert budget? | Team |
-| 5 | Whether the WRDS agreement permits sending tool values to an LLM (Mark asking Dr. Abdulrashid; dummy data until then) | Mark |
-| 6 | Model v2 seed: retrained under `config.SEED` or still seed 42? | Jessica |
-| 7 | Can exact raw values (for example total assets in a given year) re-identify a firm even under an alias? If so, should tools send percentiles and ratios to the LLM instead of raw amounts? | Team |
-| 8 | Should `get_control_history`, `get_cohort_rate` and `get_peer_cohort` be capped at year t, so no tool can return outcomes after the assessment year? Contract change, so it needs the amendment process | Said, Mark |
+| # | Question | Owner | Status |
+|---|---|---|---|
+| 1 | Train and validation years; relaxed split or not | Enock | Open. Test years settled: 2019 to 2022 |
+| 2 | Raw output preserved in the trace, so raw claim support can be measured | Enock, Jessica | Closed 6 Nov: `_jsonable` fix; logger writes raw output before the verifier |
+| 3 | Trace log format | Jessica | Closed: `traces/<run_id>.jsonl`, task 3.3 |
+| 4 | Is 5% the right alert budget? | Team | Closed 6 Nov: agreed with v0.4 |
+| 5 | Whether the WRDS agreement permits sending tool values to an LLM | Mark | Open: dummy data until answered |
+| 6 | Model seed: 42 or `config.SEED`? | Jessica | Closed: v3 retrained under 20260928 |
+| 7 | Can exact raw values re-identify a firm even under an alias? If so, send percentiles and deviations instead of raw amounts | Mark | Open: contract decision this week |
+| 8 | Cap the tools at year t so none returns later outcomes | Said, Mark | Closed 6 Nov: contract amended for tools 1, 2, 6 and 7 |
