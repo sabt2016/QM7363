@@ -176,12 +176,32 @@ with blocked:
         f"{report['verified_items']} claims verified, {report['blocked_items']} removed. "
         "A removed claim is deleted rather than flagged, and the rate is reported."
     )
+
+    # The breakdown by reason, not just the rate. A system that never blocks
+    # anything has either a very obedient model or a verifier that is not
+    # working, and this table is how a reader tells those apart.
+    # docs/VERIFIER_SPEC.md section 5.
+    reasons = report.get("reasons") or {}
+    if reasons:
+        cols = st.columns(len(reasons))
+        labels = {
+            "missing_or_unknown_ids": "No such result",
+            "numeric_claim_unsupported": "Number unsupported",
+            "direction_contradicts_result": "Direction wrong",
+            "entity_not_in_results": "Entity not in results",
+        }
+        for col, (key, count) in zip(cols, reasons.items()):
+            col.metric(labels.get(key, key), count)
+        st.divider()
+
     if not report["issues"]:
         st.success("Every claim traced back to a tool result.")
     for issue in report["issues"]:
         with st.container(border=True):
             st.markdown(f"**{issue['item'].get('claim')}**")
             st.caption(f"Reason: {issue['reason']}")
+            if issue.get("detail"):
+                st.caption("Failed on: " + ", ".join(str(d) for d in issue["detail"]))
             st.caption("Cited: " + ", ".join(issue["item"].get("tool_result_ids", [])))
 
 with trace_tab:

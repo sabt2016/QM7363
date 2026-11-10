@@ -22,7 +22,8 @@ import json
 from typing import Any, Callable
 
 from src import tools
-from src.agent import TOOL_NAMES, run_agent, verify_evidence_links
+from src.agent import TOOL_NAMES, run_agent
+from src.task_5_3_verifier import verify
 
 ALIAS = "FIRM_A"
 
@@ -176,7 +177,11 @@ class OfflineLLM:
             )
 
         contradictory = []
-        if prior and prior != "adverse":
+        # Only an explicitly effective prior year is evidence against the
+        # assessment. "unknown" and "not_assessed" are absence of evidence, and
+        # writing them up as evidence against would be the kind of claim this
+        # whole component exists to stop.
+        if prior == "effective":
             contradictory.append(
                 {
                     "claim": f"The firm's prior-year control status is recorded as {prior}.",
@@ -276,9 +281,12 @@ def run_assessment(
     before = len(result.output.get("evidence", [])) + len(
         result.output.get("contradictory_evidence", [])
     )
-    report = verify_evidence_links(result.output, result.trace)
-    total = report["verified_items"] + report["blocked_items"]
-    report["block_rate"] = round(report["blocked_items"] / total, 4) if total else 0.0
+    # One verification pass, not two. Decision 2026-11-10, entry 29. The task
+    # 5.3 verifier does linkage itself under missing_or_unknown_ids, so running
+    # verify_evidence_links first would count the same blocked claim in two
+    # reports and overstate the block rate. block_rate and the per-reason
+    # counts come back in the report.
+    report = verify(result.output, result.trace)
 
     return {
         "gvkey": gvkey,

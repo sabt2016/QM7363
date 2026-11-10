@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from src.task_5_3_verifier import verify_copy
+from src.task_5_3_verifier import verify
 
 REQUIRED_TOOLS = (
     "get_firm_history", "get_control_history", "score_firm",
@@ -106,7 +106,14 @@ def run_task_5_2(
     """Run real agent integration and persist raw assessment plus trace.
 
     `logger`, when supplied, must expose finish(agent_result=..., verifier=...).
-    The logger is finalized before the detailed verifier mutates a copy.
+
+    One verification pass, not two. Decision 2026-11-10, entry 29. This used to
+    hand verify_evidence_links to the logger and then run the task 5.3 verifier
+    on a separate copy, which produced two reports that both counted the same
+    blocked claim. The 5.3 verifier does linkage itself under
+    missing_or_unknown_ids, so it is the only pass. Jessica's logger already
+    writes the raw output to disk before the verifier runs and the verified
+    output after, so passing it the full verifier preserves the audit trail.
     """
     agent_module = agent_module or _load_module("src.agent")
     tool_map = build_tool_map(tools_module=tools_module, model_module=model_module)
@@ -121,19 +128,20 @@ def run_task_5_2(
         max_tool_calls=max_tool_calls,
     )
 
-    linkage_report = None
+    # Snapshot before anything mutates the output. The verifier removes items
+    # in place, so this is the only record of what the model actually wrote.
+    raw_output = copy.deepcopy(result.output)
+
     if logger is not None:
         finish = getattr(logger, "finish", None)
         if not callable(finish):
             raise IntegrationError("Trace logger must expose finish(agent_result=..., verifier=...).")
-        # Required order: logger persists the raw output before linkage verification.
-        linkage_report = finish(
-            agent_result=result,
-            verifier=agent_module.verify_evidence_links,
-        )
+        # The logger writes raw output, runs the verifier, writes verified output.
+        verification_report = finish(agent_result=result, verifier=verify)
+    else:
+        verification_report = verify(result.output, result.trace)
 
-    raw_output = copy.deepcopy(result.output)
-    verified_output, verification_report = verify_copy(raw_output, result.trace)
+    verified_output = result.output
 
     payload = {
         "task": "5.2_and_5.3",
@@ -146,7 +154,6 @@ def run_task_5_2(
         "raw_output": raw_output,
         "verified_output": verified_output,
         "trace": result.trace,
-        "linkage_report": linkage_report,
         "verification_report": verification_report,
     }
     out = Path(output_dir)
