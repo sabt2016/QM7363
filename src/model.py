@@ -1,9 +1,17 @@
 """Contract adapter for score_firm.
 
-The frozen model in src/scoring.py was written against task 1.6C and returns a
-flat dictionary. docs/TOOL_CONTRACT.md requires the three-key envelope and a
+src/scoring.py exposes score_firm_core, which returns a flat dictionary rich
+in detail. docs/TOOL_CONTRACT.md requires the three-key envelope and a
 different set of value keys. This module is the only place those two shapes
 meet, so the drift between them is handled once instead of everywhere.
+
+Jessica removed her own wrapper on 2026-11-10 so that this stays the single
+contract surface, and her notebook regenerates scoring.py without it, which
+means task 7.2 will not quietly bring a second wrapper back.
+
+The real gvkey this module passes to score_firm_core comes back in the
+result's "gvkey" field. src/session.py masks it to the session alias on the
+return path, so nothing here needs to.
 
 Conversions performed here:
   risk_rank + cohort_size  ->  percentile          (contract section 3, tool 3)
@@ -29,7 +37,7 @@ from src import scoring
 EFFECTIVE = 1
 ADVERSE = 2
 
-ARTIFACT_NAME = "financial_only_xgb_v2.pkl"
+ARTIFACT_NAME = "financial_only_xgb_v3.pkl"
 
 
 def _envelope(value, source, notes):
@@ -91,7 +99,7 @@ def score_firm(gvkey, fyear):
 
     uses_prior = artifact.get("prior_opinion_col") is not None
     source = (
-        f"model_v2 | xgb_calibrated | "
+        f"model_v3 | xgb_calibrated | "
         f"trained fyear {config.TRAIN_START_YEAR}-{config.TRAIN_END_YEAR} | "
         f"gvkey={key} fyear={year}"
     )
@@ -119,7 +127,7 @@ def score_firm(gvkey, fyear):
         )
 
     try:
-        result = scoring.score_firm(key, year, panel, artifact)
+        result = scoring.score_firm_core(key, year, panel, artifact)
     except (ValueError, KeyError) as exc:
         return _envelope(None, source, f"{exc} {disclosure}")
 
