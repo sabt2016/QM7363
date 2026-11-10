@@ -55,21 +55,50 @@ def _mask(obj: Any, real: str, alias: str) -> Any:
     return obj
 
 
-def alias_tools(real_gvkey: str) -> dict[str, Callable[..., Any]]:
+# Argument names that carry a fiscal year, across all nine tool signatures.
+YEAR_ARGS = ("fyear", "through_fyear")
+
+
+def _refused(name: str, key: str, year: Any, max_year: int) -> dict[str, Any]:
+    """The contract's failure shape: value None, and notes say why."""
+    return {
+        "value": None,
+        "source": f"refused | {name} | {key}={year}",
+        "notes": (
+            f"Refused: {key}={year} is after the assessment year {max_year}. "
+            "No tool may return anything observed after the assessment year."
+        ),
+    }
+
+
+def alias_tools(real_gvkey: str, max_year: int | None = None) -> dict[str, Callable[..., Any]]:
     """The tool layer with the alias boundary enforced in both directions.
 
     Outbound: the model asks for FIRM_A, the real gvkey is substituted here.
     Inbound:  the real gvkey is masked out of the return before the loop
               hands it back to the model.
+
+    Year guard: when max_year is given, a call asking for any later year is
+    refused before the tool runs. The contract caps what each tool returns at
+    the year it is given; this stops the model from being given a later year
+    in the first place. Without it, assessing FY2018 and asking score_firm for
+    fyear=2019 would run the tool on 2019 data.
     """
 
     def wrap(fn: Callable[..., Any]) -> Callable[..., Any]:
+        name = getattr(fn, "__name__", "tool")
+
         def inner(**kwargs: Any) -> Any:
+            if max_year is not None:
+                for key in YEAR_ARGS:
+                    year = kwargs.get(key)
+                    if year is not None and int(year) > int(max_year):
+                        return _refused(name, key, year, int(max_year))
             if kwargs.get("gvkey") == ALIAS:
                 kwargs = {**kwargs, "gvkey": real_gvkey}
             return _mask(fn(**kwargs), real_gvkey, ALIAS)
 
-        inner.__name__ = getattr(fn, "__name__", "tool")
+        inner.__name__ = name
         return inner
 
     return {name: wrap(getattr(tools, name)) for name in TOOL_NAMES}
@@ -275,7 +304,7 @@ def run_assessment(
             "opinion in the following fiscal year."
         ),
         llm=llm,
-        tools=alias_tools(gvkey),
+        tools=alias_tools(gvkey, max_year=int(fyear)),
         max_tool_calls=int(max_tool_calls),
     )
 
