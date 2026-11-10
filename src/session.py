@@ -18,6 +18,7 @@ chosen a call and before the tool runs.
 
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any, Callable
 
@@ -286,6 +287,10 @@ def run_assessment(
     # verify_evidence_links first would count the same blocked claim in two
     # reports and overstate the block rate. block_rate and the per-reason
     # counts come back in the report.
+    # Snapshot before verify() edits the output in place. The app shows it
+    # beside the verified output, and raw claim support in the evaluation is
+    # measured on it (docs/EVALUATION_DESIGN.md section 6).
+    raw_output = copy.deepcopy(result.output)
     report = verify(result.output, result.trace)
 
     return {
@@ -297,6 +302,8 @@ def run_assessment(
         "run_id": result.run_id,
         "tool_calls_used": result.tool_calls_used,
         "claims_before": before,
+        "inject_unsupported": bool(inject_unsupported),
+        "raw_output": raw_output,
         "output": result.output,
         "report": report,
         "trace": result.trace,
