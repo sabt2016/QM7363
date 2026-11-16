@@ -2,6 +2,7 @@
 
 **Status:** AGREED AND IN FORCE. Signed by all five members on October 6, 2026.
 **Amended 2026-11-06** (look-ahead): tools 2, 6 and 7 are capped at the assessment year. See section 1 and the decision log.
+**Amended 2026-11-16** (citable numbers): any number the agent may quote lives in `value`, never only in `notes`. See section 1, tools 1 and 4, and the decision log.
 **Task:** 0.1, complete. Stubs and implementation may now begin.
 
 Nine functions. Said Shoaib implements them, Enock's agent calls them, and the
@@ -37,6 +38,17 @@ Rules that hold for all nine:
   never `1004`.
 - **Unknown `gvkey`** returns `value: None` with `notes: "gvkey not in panel"`.
   It is not an error and must not raise.
+- **Any number the agent may quote lives in `value`.** `notes` is prose for a
+  human reader and is not a source of citable facts. The claim verifier reads
+  numbers out of the structured result and accepts a string only when the whole
+  string is a number, so a figure buried in a sentence gives it nothing, and a
+  claim quoting that figure is deleted as unsupported even though the tool
+  returned it. Widening the verifier to harvest numbers out of prose is the
+  wrong fix: it would let the `3` in "fewer than 3 prior years" or the year in
+  "capped at fiscal year 2018" stand as evidence for any claim citing that
+  result. Structured data is evidence, prose is commentary. Duplicating a figure
+  in `notes` for readability is fine. Omitting it from `value` is not.
+  Amended 2026-11-16, raised by Said Shoaib during task 2.1.
 - **No tool may return anything observed after the assessment year.** The agent
   assesses year `t` and the label is the opinion in `t + 1`, so any value from
   `t + 1` onward is the answer or a proxy for it. Every tool that touches a year
@@ -72,9 +84,24 @@ Everything on record for one firm. The agent's usual first call.
 agent cannot see past the year under review. It used to default to None, which
 is the same hole section 1 closes for tools 2, 6 and 7. Amended 2026-11-06.
 
+The list is wrapped so the gap information is citable:
+
+```python
+{
+  "records":       [ {...}, {...} ],   # one dict per fiscal year, oldest first
+  "n_records":     8,
+  "missing_years": [2014, 2016],       # gaps inside the observed range, [] if none
+}
+```
+
+Amended 2026-11-16. The missing-year list used to live only in `notes`, where
+the verifier cannot reach it, so an agent pointing out a gap in the record had
+the sentence deleted. See section 1.
+
 **source:** `final_panel | gvkey=001004 | fyear<=2018 | 8 rows`
 
-**notes:** how many years, and whether any are missing from the middle.
+**notes:** how many years, and whether any are missing from the middle. May
+repeat the figures above.
 
 ---
 
@@ -135,9 +162,29 @@ does not credit it with information it never had.
 
 Where one value sits among all firms that year.
 
-**value:** float 0 to 100, one decimal. `None` if the firm has no value.
+**value:**
+```python
+{
+  "percentile":  71.4,      # float 0 to 100, one decimal
+  "raw_value":   0.0412,    # the firm's own value for this variable, 4 dp
+  "n":           3475,      # firms in the comparison
+}
+```
+`None` if the firm has no value for this variable and year.
+
+Amended 2026-11-16. This was a bare float with the raw value and the comparison
+count in `notes`, where the verifier cannot reach them, so an agent quoting the
+firm's actual ratio had the sentence deleted. See section 1.
+
+**Population:** the comparison is among firms that could have received an
+opinion, `auopic` 1 and 2, not every firm in the panel. Code 0 firms are exempt
+from the attestation largely because they are small, so including them lifts a
+firm's size and scale percentiles above where it sits among the companies it is
+actually compared against. Percentiles and rates use the same population
+throughout the contract. Agreed 2026-11-16.
+
 **source:** `final_panel | gvkey=001004 | fyear=2018 | col=ROA | n=3475`
-**notes:** the raw value and how many firms were in the comparison.
+**notes:** how the comparison was formed. May repeat the figures above.
 
 `variable` must be one of the 19 feature names. Anything else returns `None`
 with `notes: "unknown variable"`.
