@@ -1,13 +1,9 @@
-"""Nine agent tools for the QM 7363 capstone.
-
-These are initial stubs that follow the agreed Tool Contract.
-Real data/model implementations will replace the stubs later.
-"""
+"""Data-backed agent tools implementing the QM 7363 capstone Tool Contract."""
 
 from __future__ import annotations
 
 
-def _result(value, source="stub", notes="Stub implementation"):
+def _result(value, source="unspecified", notes=""):
     """Return the shared three-key tool envelope."""
     return {
         "value": value,
@@ -151,12 +147,14 @@ def get_percentile(gvkey, fyear, variable):
             notes="unknown variable",
         )
 
-    # Include all firms, not only audited firms.
+    # Compare assessed firms only: effective (1) or adverse (2).
     df = load_panel(audited_only=False)
 
     # Select the requested fiscal year and nonmissing feature values.
     comparison = df.loc[
-        (df["fyear"] == fyear) & df[variable].notna(),
+        (df["fyear"] == fyear)
+        & df["auopic"].isin([1, 2])
+        & df[variable].notna(),
         ["gvkey", variable],
     ].copy()
 
@@ -172,7 +170,7 @@ def get_percentile(gvkey, fyear, variable):
                 f"final_panel | gvkey={gvkey} | "
                 f"fyear={fyear} | col={variable} | n={len(comparison)}"
             ),
-            notes="gvkey not in panel or firm has no value for this variable and year.",
+            notes="gvkey not assessed or firm has no value for this variable and year.",
         )
 
     raw_value = float(firm.iloc[0][variable])
@@ -186,15 +184,17 @@ def get_percentile(gvkey, fyear, variable):
     percentile = round(float(percentile), 1)
 
     return _result(
-        percentile,
+        {
+            "percentile": percentile,
+            "raw_value": round(raw_value, 4),
+        },
         source=(
             f"final_panel | gvkey={gvkey} | "
             f"fyear={fyear} | col={variable} | n={len(comparison)}"
         ),
         notes=(
-            f"Raw value: {raw_value:.4f}; "
-            f"comparison firms: {len(comparison)}. "
-            "Compared against all firms with nonmissing values "
+            f"Comparison firms: {len(comparison)}. "
+            "Compared against assessed firms with nonmissing values "
             "for this variable in the same fiscal year."
         ),
     )
@@ -574,7 +574,7 @@ def get_industry_context(gvkey, fyear):
 
     percentiles = {}
     for variable in ["ROA", "CURR_RATIO", "LNTA"]:
-        values = pd.to_numeric(industry[variable], errors="coerce")
+        values = pd.to_numeric(assessed[variable], errors="coerce")
         target = pd.to_numeric(
             pd.Series([row[variable]]), errors="coerce"
         ).iloc[0]
@@ -619,8 +619,9 @@ def get_industry_context(gvkey, fyear):
     notes = (
         f"Industry comparisons use SIC2 {sic2:02d} in FY{year}. "
         f"Industry adverse rate uses assessed firms only (auopic 1 and 2). "
-        f"Financial percentiles compare nonmissing values within the same "
-        f"SIC2 group and fiscal year. SIC_SOURCE={sic_source}."
+        f"Financial percentiles compare nonmissing values among assessed "
+        f"firms within the same SIC2 group and fiscal year. "
+        f"SIC_SOURCE={sic_source}."
     )
 
     return _result(value, source=source, notes=notes)
