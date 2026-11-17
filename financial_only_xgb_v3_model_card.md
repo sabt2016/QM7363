@@ -128,6 +128,7 @@ The agent calls score_firm(gvkey, feature_year) with a session alias such as FIR
 - The prior-opinion variant mostly reflects persistence of control weaknesses. It should be presented as such, and the report should state how much the financial features add beyond it.
 - No operating threshold is selected. The score_firm rank is retrospective, not an as-of-date live ranking.
 - Until the university confirms the WRDS data-use terms, agent tests use dummy data only.
+- The pickled artifacts (.pkl) load correctly only under the scikit-learn version they were built under (1.6.1) and fail under later versions. Scoring therefore uses portable exports (plain JSON plus an XGBoost JSON booster), checked to reproduce the pickled models' probabilities to four decimal places on all 42,728 assessed firm-years (largest difference below 2e-16), including under scikit-learn 1.9.1.
 
 ## Reproducibility
 
@@ -137,4 +138,5 @@ Random seed: 20260928 (decision-log value (config.SEED not importable from this 
 Bootstrap draws: 1000
 Environment: {"python": "3.13.5", "pandas": "2.2.3", "numpy": "2.1.3", "scikit_learn": "1.6.1", "xgboost": "3.2.0"}
 Frozen artifacts: models/financial_only_xgb_v3.pkl and models/prior_opinion_xgb_v3.pkl
+Portable artifacts (used for scoring): models/financial_only_xgb_v3.portable.json and models/prior_opinion_xgb_v3.portable.json, with their XGBoost booster files; the .pkl files are kept as the original record
 Decision record: models/decisions_v3.json
