@@ -64,7 +64,10 @@ def test_get_percentile():
     result = get_percentile("001004", 2018, "ROA")
 
     assert_tool_envelope(result)
-    assert isinstance(result["value"], float)
+    assert isinstance(result["value"], dict)
+    assert isinstance(result["value"]["percentile"], (int, float))
+    assert isinstance(result["value"]["raw_value"], (int, float))
+    assert 0 <= result["value"]["percentile"] <= 100
 
 
 def test_get_deviation():
