@@ -26,7 +26,6 @@ and nothing raises.
 
 from __future__ import annotations
 
-import pickle
 from functools import lru_cache
 
 import pandas as pd
@@ -37,7 +36,7 @@ from src import scoring
 EFFECTIVE = 1
 ADVERSE = 2
 
-ARTIFACT_NAME = "financial_only_xgb_v3.pkl"
+ARTIFACT_NAME = "financial_only_xgb_v3.portable.json"
 
 
 def _envelope(value, source, notes):
@@ -47,10 +46,24 @@ def _envelope(value, source, notes):
 
 @lru_cache(maxsize=1)
 def _artifact():
-    """Load the frozen model once per process."""
-    path = config.MODEL_DIR / ARTIFACT_NAME
-    with path.open("rb") as fh:
-        return pickle.load(fh)
+    """Load the frozen model once per process, from the portable artifact.
+
+    This used to unpickle financial_only_xgb_v3.pkl. The pickle carries
+    scikit-learn's private object state, which is not a stable interface, so
+    the file only loaded under the exact library version that wrote it. On
+    2026-11-16 it failed here on every machine except the one that built it,
+    which took out score_firm and five of the nine failing tests with it.
+
+    The portable artifact is plain data plus the booster in XGBoost's own
+    documented format. scoring.load_artifact reads it with no scikit-learn and
+    no pickle, and finds the booster file beside the JSON. Jessica verified the
+    two produce identical probabilities on all 42,728 assessed firm-years, at
+    every stage, with a maximum absolute difference of 0.0. See
+    results/portable_export_check_v3_summary.json and the decision log.
+
+    The original pickles are kept unchanged as the record of what was frozen.
+    """
+    return scoring.load_artifact(config.MODEL_DIR / ARTIFACT_NAME)
 
 
 @lru_cache(maxsize=1)

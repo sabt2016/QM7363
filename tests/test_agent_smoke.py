@@ -22,6 +22,14 @@ TOOLS = {name: getattr(tools, name) for name in TOOL_NAMES}
 # A deliberately unreachable result id. Nothing in the trace will ever match it.
 FABRICATED_ID = "result_99"
 
+# A real gvkey. Amended 2026-11-20, when the real tool layer replaced the stubs.
+# This used to pass the literal string "FIRM_A", which the stubs ignored. The real
+# tools do not: src/model.py calls int() on the identifier before its own error
+# handling, so the alias raised ValueError and the call was recorded as a failure.
+# The alias boundary belongs to src/session.py and is tested there, not here.
+GVKEY = "001004"
+FYEAR = 2018
+
 
 class FakeLLM:
     """Scripted model: two real tool calls, then an answer with one invented claim."""
@@ -38,14 +46,14 @@ class FakeLLM:
                 "name": "get_control_history",
                 # through_fyear is required since the look-ahead amendment of
                 # 2026-11-06. Omitting it used to return the outcome year.
-                "arguments": {"gvkey": "FIRM_A", "through_fyear": 2018},
+                "arguments": {"gvkey": GVKEY, "through_fyear": FYEAR},
             }
 
         if self.step == 2:
             return {
                 "type": "tool_call",
                 "name": "score_firm",
-                "arguments": {"gvkey": "FIRM_A", "fyear": 2018},
+                "arguments": {"gvkey": GVKEY, "fyear": FYEAR},
             }
 
         return {
@@ -53,36 +61,42 @@ class FakeLLM:
             "content": {
                 "assessment": {
                     "risk_level": "moderate",
-                    "summary": "Elevated relative rank, no prior adverse opinion on record.",
+                    "summary": "Relative rank recorded, no prior adverse opinion on record.",
                     "target": "adverse ICFR opinion",
-                    "firm_id": "FIRM_A",
-                    "feature_year": 2018,
-                    "outcome_year": 2019,
-                    "probability": 0.1187,
-                    "model_version": "financial_only_xgb_v2",
+                    "firm_id": GVKEY,
+                    "feature_year": FYEAR,
+                    "outcome_year": FYEAR + 1,
                     "confidence": "low",
                 },
+                # No quoted figures. Amended 2026-11-20. These claims used to hard-code
+                # the stub values, 0.1187 and the 94.9th percentile. Against real data
+                # those are simply wrong, so the claim check deleted them and the test
+                # counted two blocks where it expected one. Pinning real values here
+                # would make the test fail whenever the panel or the model changes,
+                # which is not what a walking skeleton is for. Numeric support is
+                # covered in tests/test_task_5_3_verifier.py and against live values in
+                # tests/test_task_5_2_integration.py.
                 "evidence": [
                     {
-                        "claim": "Controls were assessed effective in 2018.",
+                        "claim": "A control history is on record for the assessment year.",
                         "tool_result_ids": ["result_1"],
-                        "interpretation": "No adverse year on record.",
+                        "interpretation": "Retrieved for the year under review.",
                     },
                     {
-                        "claim": "The firm sits in the 94.9th percentile of modelled risk.",
+                        "claim": "The model returned a score for this firm and year.",
                         "tool_result_ids": ["result_2"],
-                        "interpretation": "High rank against the scored cohort.",
+                        "interpretation": "A relative rank, not an absolute threshold.",
                     },
                     {
-                        "claim": "The 10-K discloses a remediation plan.",
+                        "claim": "The filing discloses a remediation plan.",
                         "tool_result_ids": [FABRICATED_ID],
                         "interpretation": "Unsupported. Cites a result that was never produced.",
                     },
                 ],
                 "contradictory_evidence": [],
-                "uncertainty": ["Every tool result in this run is a stub."],
+                "uncertainty": ["One scripted provider. Not a real assessment."],
                 "recommended_checks": [
-                    {"check": "Re-run against the real panel", "reason": "Stub data only."}
+                    {"check": "Re-run through the application", "reason": "Scripted provider."}
                 ],
             },
         }
@@ -91,8 +105,8 @@ class FakeLLM:
 @pytest.fixture(name="run")
 def _run():
     return run_agent(
-        firm_id="FIRM_A",
-        feature_year=2018,
+        firm_id=GVKEY,
+        feature_year=FYEAR,
         user_question="Assess this firm's risk of an adverse internal-control opinion.",
         llm=FakeLLM(),
         tools=TOOLS,
@@ -115,8 +129,8 @@ def test_every_executed_call_is_in_the_trace(run):
 def test_call_budget_is_enforced():
     """A budget of zero must execute no tools, not raise."""
     result = run_agent(
-        firm_id="FIRM_A",
-        feature_year=2018,
+        firm_id=GVKEY,
+        feature_year=FYEAR,
         user_question="Assess this firm.",
         llm=FakeLLM(),
         tools=TOOLS,

@@ -45,26 +45,40 @@ class IntegrationTests(unittest.TestCase):
             }, 2022)
 
 
-class StubGateTests(unittest.TestCase):
-    """build_tool_map refuses the stub layer, and that is the intended state.
+class ToolGateTests(unittest.TestCase):
+    """build_tool_map refuses placeholder tools and accepts the real ones.
 
-    Every tool in src/tools.py still carries "Stub implementation" in its
-    source, so this raises today and will keep raising until Said lands the
-    real tools. The test exists so that nobody reads the exception as a break.
+    This used to assert the opposite. Until 20 November every tool in
+    src/tools.py carried "Stub implementation" in its source, the gate refused
+    the whole set, and the test proved it. Said's implementations removed those
+    markers, so the old assertion was describing a world that no longer exists.
+
+    The guard itself still matters, which is why it is tested rather than
+    deleted: a placeholder reintroduced later must still be refused.
     """
 
-    def test_the_stub_layer_is_refused(self):
-        # model_module is supplied so the test does not need config.py, which is
-        # gitignored and differs per machine. The gate under test is the one on
-        # the nine tools, not the model adapter.
+    def test_the_real_tool_layer_is_accepted(self):
+        mapping = build_tool_map()
+        self.assertEqual(len(mapping), 9)
+        for name, fn in mapping.items():
+            self.assertTrue(callable(fn), name)
+
+    def test_a_placeholder_tool_is_still_refused(self):
+        """Inject one fake tool carrying a stub marker and confirm it fails closed."""
         import types
 
-        def score_firm(gvkey, fyear):
-            return {"value": {}, "source": "test", "notes": ""}
+        def get_industry_context(gvkey, fyear):
+            # Stub implementation. Returns an invented value.
+            return {"value": None, "source": "stub", "notes": ""}
 
-        fake_model = types.SimpleNamespace(score_firm=score_firm)
+        import src.tools as real_tools
+        shim = types.SimpleNamespace(**{
+            n: getattr(real_tools, n) for n in dir(real_tools) if not n.startswith("_")
+        })
+        shim.get_industry_context = get_industry_context
+
         with self.assertRaises(IntegrationError) as caught:
-            build_tool_map(model_module=fake_model)
+            build_tool_map(tools_module=shim)
         self.assertIn("stub", str(caught.exception).lower())
 
 
