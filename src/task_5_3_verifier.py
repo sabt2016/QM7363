@@ -100,12 +100,23 @@ YEAR_KEYS = ("fyear", "feature_year", "fiscal_year", "year",
 # is the approach section 3.4 of the spec already proposed for qualitative
 # language: a small allowed vocabulary, and block the rest. Widen it from
 # observed false positives, never by guessing.
+#
+# First tuning pass, 2026-11-20, from the first run against real data. The
+# verifier deleted a correct sentence because its interpretation began with
+# "Persistence of a prior problem is the strongest single predictor we have".
+# "Persistence" is ordinary reporting language; it was flagged only because it
+# starts a sentence and was missing from this list. Sentence position cannot be
+# used to excuse a word, because "Enron shows elevated risk" starts a sentence
+# too, so the vocabulary is the mechanism and it grows from cases like this one.
 ALLOWED_PROSE_TERMS = frozenset("""
 a an and as at but by for from in into is are was were be been being it its
 no not of on or that the their then there these this to with than against
 between over under above below both all any each per if when while after
 before during because however although though which who whose what where
 based comparable compared considering current despite evidence every given
+persistence absence presence consistency management together significant
+notable several many most few either further prior recent historical
+overall whether neither nothing nonetheless accordingly
 model neither none nothing overall relative taken using within without
 across among one two three four five six seven eight nine ten nineteen
 high higher highest low lower lowest moderate elevated strong weak

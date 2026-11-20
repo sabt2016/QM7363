@@ -30,8 +30,20 @@ def test_base_rate(panel):
 
 
 def test_cfsale_recovered(panel):
-    assert "CFsale" in panel.columns
-    assert panel["CFsale"].notna().mean() > 0.85
+    # Lower case. Decision of 2026-10-19, applied to this module 2026-11-16.
+    assert "cfsale" in panel.columns
+    assert panel["cfsale"].notna().mean() > 0.85
+
+
+def test_identifiers_keep_their_leading_zeros(panel):
+    """gvkey and cik are text, not numbers.
+
+    Read as numbers, pandas drops the leading zeros, and every six-character
+    gvkey comparison in src/tools.py then matches nothing while reporting it
+    as "gvkey not in panel".
+    """
+    assert panel["gvkey"].astype(str).str.fullmatch(r"\d{6}").all()
+    assert panel["cik"].astype(str).str.fullmatch(r"\d{10}").any()
 
 
 def test_no_random_split():
