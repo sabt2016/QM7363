@@ -45,7 +45,15 @@ def get_firm_history(gvkey, through_fyear):
     gap_note = "missing fiscal years: " + ", ".join(map(str, missing)) if missing else "no missing fiscal years within observed range"
     notes = f"{len(records)} firm-year records through FY{cutoff}; {gap_note}."
     source = f"final_panel | gvkey={key} | fyear<={cutoff} | {len(records)} rows"
-    return _result(records, source=source, notes=notes)
+    return _result(
+        {
+            "records": records,
+            "n_records": len(records),
+            "missing_years": missing,
+        },
+        source=source,
+        notes=notes,
+    )
 
 def get_control_history(gvkey, through_fyear):
     """Return actual internal-control history through the requested year."""
@@ -187,6 +195,7 @@ def get_percentile(gvkey, fyear, variable):
         {
             "percentile": percentile,
             "raw_value": round(raw_value, 4),
+            "n": len(comparison),
         },
         source=(
             f"final_panel | gvkey={gvkey} | "

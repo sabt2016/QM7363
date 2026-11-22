@@ -22,10 +22,19 @@ def test_get_firm_history():
     result = get_firm_history("001004", 2018)
 
     assert_tool_envelope(result)
-    assert isinstance(result["value"], list)
 
-    if result["value"]:
-        record = result["value"][0]
+    value = result["value"]
+    assert isinstance(value, dict)
+    assert "records" in value
+    assert "n_records" in value
+    assert "missing_years" in value
+
+    assert isinstance(value["records"], list)
+    assert value["n_records"] == len(value["records"])
+    assert isinstance(value["missing_years"], list)
+
+    if value["records"]:
+        record = value["records"][0]
         assert "fyear" in record
         assert "auopic" in record
         assert "auop" in record
@@ -67,6 +76,8 @@ def test_get_percentile():
     assert isinstance(result["value"], dict)
     assert isinstance(result["value"]["percentile"], (int, float))
     assert isinstance(result["value"]["raw_value"], (int, float))
+    assert isinstance(result["value"]["n"], int)
+    assert result["value"]["n"] > 0
     assert 0 <= result["value"]["percentile"] <= 100
 
 
